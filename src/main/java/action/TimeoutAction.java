@@ -21,6 +21,16 @@ public class TimeoutAction {
         var member = cluster.getMember(thisMemberId);
         var targetMemberId = member.getTargetMember();
 
+        if (member.getState() == MemberState.FAULTY) {
+            LOGGER.debug(String.format("member-%s -- ignore as failed", member.getId()));
+            return;
+        }
+
+        if (member.receivedAck()) {
+            LOGGER.debug(String.format("member-%s knows it contacted is alive", thisMemberId));
+            return;
+        }
+
         // choose a subset of alive members from local membership
         var candidateMembers = new ArrayList<>(member.getLocalMembershipList().stream()
                 .filter(e -> e.getState() == MemberState.ALIVE)

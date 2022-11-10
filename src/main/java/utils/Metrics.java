@@ -8,44 +8,51 @@ public class Metrics {
     private static final Metrics instance = new Metrics();
 
     private int rounds;
-    private int timeToDetection;
-    private int falsePositives;
+    private double timeToDetection;
+
+    private double failureTime;
+
 
     private Metrics() {
         rounds = 0;
-        timeToDetection = 0;
-        falsePositives = 0;
+        timeToDetection = 0.0;
+        failureTime = 0.0;
     }
 
     public static Metrics getInstance() {
         return instance;
     }
 
-    public int getTimeToDetection() {
+    public double getTimeToDetection() {
         return timeToDetection;
     }
 
-    public int getFalsePositives() {
-        return falsePositives;
-    }
 
     public int getRounds() {
         return rounds;
     }
 
-    public void incFalsePositives() {
-        this.falsePositives += 1;
-    }
 
     public void incRounds() {
         this.rounds += 1;
     }
 
+    public void setFailureTime(double failureTime) {
+        this.failureTime = failureTime;
+    }
+
+    public void setTimeToDetection(double currentTime) {
+        this.timeToDetection = currentTime - failureTime;
+    }
+
+    public double getFailureTime() {
+        return failureTime;
+    }
+
     public void getSummary() {
         LOGGER.info("Results: ");
-        LOGGER.info("  rounds: " + getRounds());
-        LOGGER.info("  time to detection: " + getTimeToDetection());
-        LOGGER.info("  false positives: " + getFalsePositives());
-        LOGGER.info("  false positive rate: " + ((float) getFalsePositives() / (float) getRounds()) * 100.0);
+        LOGGER.info("  cumulative rounds: " + getRounds());
+        LOGGER.info(String.format("  failure time (ms): %.2f", getFailureTime() * 1000.0));
+        LOGGER.info(String.format("  time to detection (ms): %.2f", getTimeToDetection() * 1000.0));
     }
 }

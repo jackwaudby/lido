@@ -3,6 +3,7 @@ package action;
 import event.DirectPingAckEvent;
 import org.apache.log4j.Logger;
 import state.Cluster;
+import state.MemberState;
 
 
 public class DirectPingAckAction {
@@ -14,7 +15,9 @@ public class DirectPingAckAction {
         var member = cluster.getMember(thisMemberId);
         var currSeqNum = member.getSeqNum();
         var expectedSeqNum = event.getInitiatorSeqNum();
-        if (currSeqNum > expectedSeqNum) {
+        if (member.getState() == MemberState.FAULTY) {
+            LOGGER.debug(String.format("member-%s -- ignore as failed", member.getId()));
+        } else if (currSeqNum > expectedSeqNum) {
             // stale ACK, will already have marked as failed
         } else {
             // not failed, wait until the end of the protocol period

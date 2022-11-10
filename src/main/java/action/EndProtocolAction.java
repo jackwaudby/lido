@@ -18,15 +18,21 @@ public class EndProtocolAction {
         {
             var thisMemberId = event.getMemberId();
             var member = cluster.getMember(thisMemberId);
+            if (member.getState() == MemberState.FAULTY) {
+                LOGGER.debug(String.format("member-%s -- ignore as failed", member.getId()));
+                return;
+            }
+
             if (member.receivedAck()) {
                 member.setReceivedAck(false);
                 LOGGER.debug(String.format("member-%s detected no failure", thisMemberId));
             } else {
                 var targetMember = member.getTargetMember();
-                var entry = member.getLocalMembershipList().stream().filter(e -> e.getMemberId() == targetMember).findFirst().orElseThrow();
-//                entry.setState(MemberState.FAULTY);
-                metrics.incFalsePositives();
                 LOGGER.debug(String.format("member-%s detected member-%s as failed", thisMemberId, targetMember));
+                // if this happens terminate program
+                metrics.setTimeToDetection(event.getEventTime());
+                metrics.getSummary();
+                System.exit(0);
             }
 
             metrics.incRounds();

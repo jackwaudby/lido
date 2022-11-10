@@ -5,6 +5,7 @@ import event.IndirectPingAckEvent;
 import event.PingRequestAckEvent;
 import org.apache.log4j.Logger;
 import state.Cluster;
+import state.MemberState;
 import utils.EventList;
 import utils.Rand;
 
@@ -18,6 +19,12 @@ public class PingRequestAckAction {
         var member = cluster.getMember(thisMemberId);
         var currSeqNum = member.getSeqNum();
         var expectedSeqNum = event.getInitiatorSeqNum();
+
+        if (member.getState() == MemberState.FAULTY) {
+            LOGGER.debug(String.format("member-%s -- ignore as failed", member.getId()));
+            return;
+        }
+
         if (currSeqNum > expectedSeqNum) {
             // stale ACK, will already have marked as failed
             return;

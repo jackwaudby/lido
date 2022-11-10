@@ -23,6 +23,7 @@ public class DirectPingAction {
 
         var member = cluster.getMember(thisMemberId);
         if (member.getState() == MemberState.FAULTY) {
+            LOGGER.debug(String.format("member-%s -- ignore as failed", member.getId()));
             return;
         }
 

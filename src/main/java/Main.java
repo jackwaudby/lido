@@ -31,7 +31,7 @@ public class Main implements Callable<Integer> {
     private int protocolPeriod = 50;
 
     @Option(names = {"-s", "--seed"}, description = "Fix seed")
-    private String fixSeed = "false";
+    private String fixSeed = "true";
 
     @Option(names = {"-sv", "--seedValue"}, description = "Seed value")
     private int seedValue = 0;
@@ -64,8 +64,12 @@ public class Main implements Callable<Integer> {
             eventList.addEvent(epochEvent);
         }
 
-//        var failureEvent = new FailureEvent(0.006, EventType.FAILURE, 2);
-//        eventList.addEvent(failureEvent);
+        // fail some time during first round
+        var randomFailureTime = Rand.getInstance().getRandom(protocolPeriod);
+        var time = (double) randomFailureTime / 1000.0;
+        var randomMember = Rand.getInstance().getRandom(config.getInitialNbrOfMembers());
+        var failureEvent = new FailureEvent(time, EventType.FAILURE, randomMember);
+        eventList.addEvent(failureEvent);
 
         // run simulation
         DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
@@ -87,7 +91,7 @@ public class Main implements Callable<Integer> {
         LOGGER.info("");
 
 
-        WriteOutResults.writeOutResults( config, metrics );
+        WriteOutResults.writeOutResults(config, metrics);
 
         return 0;
     }

@@ -8,3 +8,5 @@ Assumptions:
 
 ## Time to detect
 
+In each round of the protocol pick a random node to fail.
+Measure time until first node know it has failed. 

@@ -2,6 +2,8 @@ package action;
 
 import event.*;
 import org.apache.log4j.Logger;
+import state.Cluster;
+import state.MemberState;
 import utils.EventList;
 import utils.Rand;
 
@@ -12,6 +14,12 @@ public class IndirectPingAckAction {
         // forward on an indirect ping
         var thisEventTime = event.getEventTime();
         var thisMemberId = event.getReceiverId();
+
+        var member = Cluster.getInstance().getMember(thisMemberId);
+        if (member.getState() == MemberState.FAULTY) {
+            LOGGER.debug(String.format("member-%s -- ignore as failed", member.getId()));
+            return;
+        }
 
         var indirectPingEventTime = thisEventTime + rand.generateMessageDelay();
         var indirectPingEvent = new PingRequestAckEvent(indirectPingEventTime, EventType.PING_REQUEST_ACK, thisMemberId, event.getInitiatorMemberId(), event.getInitiatorSeqNum(), event.getTargetMemberId());
