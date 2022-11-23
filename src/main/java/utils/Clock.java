@@ -20,8 +20,10 @@ public class Clock
         clock = eventTime;
     }
 
-    public double getClock()
+    public void reset()
     {
-        return clock;
+        this.clock = 0;
     }
+
+
 }

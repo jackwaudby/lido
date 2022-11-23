@@ -68,4 +68,19 @@ public class Member {
     public void setState(MemberState state) {
         this.state = state;
     }
+
+    public void reset(int clusterSize) {
+        this.seqNum = 0;
+        this.localMembershipList = new ArrayList<>();
+
+        for (int i = 0; i < clusterSize; i++) {
+            if (i != id) {
+                this.localMembershipList.add(new MembershipListEntry(i));
+            }
+        }
+
+        this.state = MemberState.ALIVE;
+        this.receivedAck = false;
+        this.targetMember = -1;
+    }
 }

@@ -36,8 +36,8 @@ public class Main implements Callable<Integer> {
     @Option(names = {"-sv", "--seedValue"}, description = "Seed value")
     private int seedValue = 0;
 
-    @Option(names = {"-d", "--duration"}, description = "Simulation duration (secs)")
-    private double timeLimit = 10;
+    @Option(names = {"-r", "--runs"}, description = "Simulation runs")
+    private double runs = 10;
 
     @Override
     public Integer call() {
@@ -56,20 +56,8 @@ public class Main implements Callable<Integer> {
         // global variables
         var rand = Rand.getInstance();
         var eventList = EventList.getInstance();
-
-        // init
-        var initEventTime = 0;
-        for (int memberId = 0; memberId < config.getInitialNbrOfMembers(); memberId++) {
-            var epochEvent = new StartProtocolPeriodEvent(initEventTime, EventType.START_PROTOCOL_PERIOD, memberId);
-            eventList.addEvent(epochEvent);
-        }
-
-        // fail some time during first round
-        var randomFailureTime = Rand.getInstance().getRandom(protocolPeriod);
-        var time = (double) randomFailureTime / 1000.0;
-        var randomMember = Rand.getInstance().getRandom(config.getInitialNbrOfMembers());
-        var failureEvent = new FailureEvent(time, EventType.FAILURE, randomMember);
-        eventList.addEvent(failureEvent);
+        var clock = Clock.getInstance();
+        var cluster = Cluster.getInstance();
 
         // run simulation
         DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
@@ -77,23 +65,51 @@ public class Main implements Callable<Integer> {
 
         LOGGER.info("--------------------");
         LOGGER.info(String.format("Starting simulation at %s", dtf.format(now)));
-        LOGGER.info("Simulation time (secs): " + String.format("%.5f", timeLimit));
+        LOGGER.info("Simulation runs: " + String.format("%.5f", runs));
         LOGGER.info("Configuration: " + Config.getInstance());
         var start = System.currentTimeMillis();
         LOGGER.info("Simulating....");
-        runSimulation(timeLimit, config, rand, eventList);
+
+        for (int i = 0; i < runs; i++) {
+            initialize(config, eventList);
+            injectFailure(config, eventList);
+            runSimulation(config, rand, eventList);
+            metrics.getSummary();
+            // clear state
+            clock.reset();
+            cluster.reset();
+            metrics.reset();
+            eventList.clear();
+        }
+
         var end = System.currentTimeMillis();
-        metrics.getSummary();
         var realTime = (end - start) / 1000.0;
         LOGGER.info("Real time (secs): " + String.format("%.5f", realTime));
         LOGGER.info("Simulation completed!");
         LOGGER.info("--------------------");
         LOGGER.info("");
 
-
-        WriteOutResults.writeOutResults(config, metrics);
+//        WriteOutResults.writeOutResults(config, metrics);
 
         return 0;
+    }
+
+    private void injectFailure(Config config, EventList eventList) {
+        // fail some time during first round
+        var randomFailureTime = Rand.getInstance().getRandom(protocolPeriod);
+        var time = (double) randomFailureTime / 1000.0;
+        var randomMember = Rand.getInstance().getRandom(config.getInitialNbrOfMembers());
+        var failureEvent = new FailureEvent(time, EventType.FAILURE, randomMember);
+        eventList.addEvent(failureEvent);
+    }
+
+    private static void initialize(Config config, EventList eventList) {
+        // init
+        var initEventTime = 0;
+        for (int memberId = 0; memberId < config.getInitialNbrOfMembers(); memberId++) {
+            var epochEvent = new StartProtocolPeriodEvent(initEventTime, EventType.START_PROTOCOL_PERIOD, memberId);
+            eventList.addEvent(epochEvent);
+        }
     }
 
     public static void main(String[] args) {
@@ -101,12 +117,12 @@ public class Main implements Callable<Integer> {
         System.exit(exitCode);
     }
 
-    static void runSimulation(double timeLimit, Config config, Rand rand, EventList eventList) {
+    static void runSimulation(Config config, Rand rand, EventList eventList) {
         var cluster = Cluster.getInstance();
         var clock = Clock.getInstance();
         var metrics = Metrics.getInstance();
 
-        while (clock.getClock() < timeLimit) {
+        while (true) {
 
             AbstractEvent nextEvent = eventList.getNextEvent();
             clock.setClock(nextEvent.getEventTime());
@@ -119,8 +135,9 @@ public class Main implements Callable<Integer> {
                 case START_PROTOCOL_PERIOD ->
                         StartProtocolAction.start((StartProtocolPeriodEvent) nextEvent, cluster, config, eventList, rand);
                 case END_PROTOCOL_PERIOD -> {
-                    EndProtocolAction.end((EndProtocolPeriodEvent) nextEvent, cluster, eventList, metrics);
-//                    return;
+                    if (EndProtocolAction.end((EndProtocolPeriodEvent) nextEvent, cluster, eventList, metrics) == 0) {
+                        return;
+                    }
                 }
                 case TIMEOUT -> TimeoutAction.timeout((TimeoutEvent) nextEvent, cluster, config, eventList, rand);
                 case DIRECT_PING -> DirectPingAction.reply((DirectPingEvent) nextEvent, cluster, eventList, rand);

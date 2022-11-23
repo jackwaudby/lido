@@ -30,4 +30,8 @@ public class EventList
         Collections.sort(eventList);
         return eventList.remove(0);
     }
+
+    public void clear() {
+        this.eventList.clear();
+    }
 }

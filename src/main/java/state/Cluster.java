@@ -36,6 +36,14 @@ public class Cluster {
         return members.get(memberId);
     }
 
+    public void reset() {
+        var clusterSize = Config.getInstance().getInitialNbrOfMembers();
+        for (var member: members.values()
+             ) {
+            member.reset(clusterSize);
+        }
+    }
+
     @Override
     public String toString() {
         return "Cluster{" +

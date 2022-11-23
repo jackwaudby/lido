@@ -14,13 +14,13 @@ import utils.Rand;
 public class EndProtocolAction {
     private final static Logger LOGGER = Logger.getLogger(EndProtocolAction.class.getName());
 
-    public static void end(EndProtocolPeriodEvent event, Cluster cluster, EventList eventList, Metrics metrics) {
+    public static int end(EndProtocolPeriodEvent event, Cluster cluster, EventList eventList, Metrics metrics) {
         {
             var thisMemberId = event.getMemberId();
             var member = cluster.getMember(thisMemberId);
             if (member.getState() == MemberState.FAULTY) {
                 LOGGER.debug(String.format("member-%s -- ignore as failed", member.getId()));
-                return;
+                return 1;
             }
 
             if (member.receivedAck()) {
@@ -31,14 +31,15 @@ public class EndProtocolAction {
                 LOGGER.debug(String.format("member-%s detected member-%s as failed", thisMemberId, targetMember));
                 // if this happens terminate program
                 metrics.setTimeToDetection(event.getEventTime());
-                metrics.getSummary();
-                System.exit(0);
+//                metrics.getSummary();
+                return 0;
             }
 
-            metrics.incRounds();
             member.incSeqNum();
             var newStartProtocolPeriod = new StartProtocolPeriodEvent(event.getEventTime(), EventType.START_PROTOCOL_PERIOD, thisMemberId);
             eventList.addEvent(newStartProtocolPeriod);
+
+            return 1;
         }
     }
 }
